@@ -1,0 +1,210 @@
+{% extends "layout.html" %}
+
+{% block title %}>Chat Room{% endblock %}
+
+{% block body %}
+<script type="text/javascript">
+//function to return current date and time
+function getCurrentDate(){
+
+	var today = new Date();
+var dd = today.getDate();
+var mm = today.getMonth() + 1; //January is 0!
+var yyyy = today.getFullYear();
+var hh=today.getHours();
+var min=today.getMinutes();
+var ss=today.getSeconds();
+if (dd < 10) {
+  dd = '0' + dd;
+}
+if (mm < 10) {
+  mm = '0' + mm;
+}
+if (hh < 10) {
+  hh = '0' + hh;
+}
+if (min < 10) {
+  min = '0' + min;
+}
+if (ss < 10) {
+  ss = '0' + ss;
+}
+today = mm + '/' + dd + '/' + yyyy+"/"+hh+ ":" +min  + ":" +ss ;
+return today;
+}
+
+$(document).ready(function() {
+	//define socket
+	//var socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port);
+	var socket = io('http://127.0.0.1:5000/channels/{{ channel }}');
+
+    //Sending the message to the server's socket
+	//socket.on('connect', function() {
+		//socket.send('User has connected!');
+	//});
+
+	//Listening to socket for 'message'  event
+	//When recieving the message back from the server's socket //
+    // we will run the function to add message content as HTML to DOM
+	socket.on('message', function(data) {
+        if(data.img==="No Image"){
+		$("#messages").append(
+               "<h5><div class=sms>"+
+                "<button type=submit class= close removebutton class=close data-dismiss=alert>"+
+                "×</button>"+
+                "<div class=rdir><strong><div class=usr>"+localStorage.getItem('username')+"</div></strong> wrote on:"+getCurrentDate()+"</div>"+
+                "<hr class=message-inner-separator></hr>"+
+                "<div class=mcontent><p>"+data.msg+"</p></div>"+
+			   "</div></h5>"
+               );}
+        else {
+		$("#messages").append(
+               "<h5><div class=sms>"+
+                "<button type=submit class= close removebutton class=close data-dismiss=alert>"+
+                "×</button>"+
+                "<div class=rdir><strong><div class=usr>"+localStorage.getItem('username')+"</div></strong> wrote on:"+getCurrentDate()+"</div>"+
+                "<hr class=message-inner-separator></hr>"+
+                "<div class=mcontent><p>"+data.msg+"</p></div>"+
+                "<img class=post src='/static/uploads/" +data.img+"'/>"+
+			   "</div></h5>"
+               );}
+        
+		$(".close").on('click', function() {
+			//select  the "mcontent" element of the clicked element's parent class 
+			//alert($(this).parent().find('.usr').text());
+            //check if current user is actual creator of message,if so..
+            if(localStorage.getItem('username')==$(this).parent().find('.usr').text()){
+			 //call backend function to remove closed element from server's storage
+			 const request = new XMLHttpRequest();
+             request.open('POST','/del_message');
+		     request.onload=()=>	alert('message deleted');
+		     const data=new FormData();
+             data.append('targetcontent',$(this).parent().find('.mcontent').text());
+             request.send(data);
+			 //remove element from the HTML context of the page
+             $(this).parent().remove();}
+            else alert("Not allowed to delete the message!Only creator can")
+		});	
+    });
+    
+    $(".close").on('click', function() {
+			//select  the "mcontent" element of the clicked element's parent class 
+			//alert($(this).parent().find('.usr').text());
+            //check if current user is actual creator of message,if so..
+            if(localStorage.getItem('username')==$(this).parent().find('.usr').text()){
+			 //call backend function to remove closed element from server's storage
+			 const request = new XMLHttpRequest();
+             request.open('POST','/del_message');
+		     request.onload=()=>	alert('message deleted');
+		     const data=new FormData();
+             data.append('targetcontent',$(this).parent().find('.mcontent').text());
+             request.send(data);
+			 //remove element from the HTML context of the page
+             $(this).parent().remove();}
+            else alert("Not allowed to delete the message!Only creator can")
+		});	
+
+
+    //When clicking on #sendbutton button we will send content of message from inputfield
+    //and optionaly an uploaded image name to the server's socket
+	$('#sendbutton').on('click', function() {
+       if ($("#attach").val()==="No Image") 
+          {ipath="No Image";  socket.emit('message',{'msg': $('#myMessage').val(),'img':ipath});}
+       else{
+          ipath=$("#attach").text();
+          socket.emit('message',{'msg': $('#myMessage').val(),'img':ipath});
+          localStorage.setItem('my_attachment', "No Image");
+          $('#attach').text("No Image");
+           }
+
+    //adding message to  server's storage
+    //*********************************************
+	const request = new XMLHttpRequest();
+    request.open('POST','/add_message');
+		
+	//request.onload=()=>	alert('message sent');
+	const data=new FormData();
+
+    data.append('channel',"{{channel}}");
+    data.append('user',localStorage.getItem('username'));
+    data.append('date',getCurrentDate());
+    data.append('content',$('#myMessage').val());
+    data.append('image',ipath);
+    request.send(data);
+   //*************************************************
+	$('#myMessage').val('');//clear the input field
+    });
+    
+	$("#create").on('click', function() {
+			const request = new XMLHttpRequest();
+            request.open('POST','/create_channel');
+		    request.onload=()=>	{
+			const data=JSON.parse(request.responseText);
+			if(data.success){
+			$("#channellist").append('<li><a href="url_for(.channels,channel='+data.ch+'" method=post>'+data.ch+'</a></li>');
+            alert("You have created the new channel !");
+            location.reload();//reload the page to appply jinja2 template :"url for"
+				}
+				else {alert("Already exists");}
+			}
+		    const data=new FormData();
+			data.append('new_channel',$('#channelname').val());
+            request.send(data);
+		  
+		});
+            //when submiting an attachment's upload we'll add file's name to cache in Local Storage
+            //in order to set the value of #attach field,after the upload completes and refreshes the page
+            $('#attachment').on('submit',function() {
+            iname=$("#filepath")[0].files[0].name;
+            localStorage.setItem('my_attachment', iname);
+ 
+           
+        });
+		  
+  
+        });
+</script>
+<div class="row">
+ <div class="left">
+	 <h4>
+	 <br>
+	 Create a New Channel:
+	 <hr>
+	 <input type="text" id="channelname">
+	 <button id="create">Create</button>
+	 <br>	<br>
+	 <hr>
+   Join Channels:
+   <hr>
+   <ul id=channellist>
+	 {% for ch in clist %}
+   <li><a href="{{ url_for('.channels',channel=ch) }}" method="post">{{ ch }}</a></li>
+	 {% endfor %}
+   </ul>
+</h4> 
+ </div>	 
+<div class="half" style="background-color:#a0b5d6">
+<div class="channelheader"><h1><b>{{ channel }}</b></h1></div>
+<div id="messages">
+		{% for msg in channel_msg %}
+		<h5><div class=sms >
+			<button type=submit class= close removebutton class=close data-dismiss=alert>
+				×</button>
+				<div class=rdir><strong><div class=usr>{{msg.user}}</div></strong> wrote on:{{msg.date}}</div>
+				<hr class=message-inner-separator></hr>
+				<div class=mcontent><p>{{msg.content}}</p></div>
+            {%if msg.image!="No Image" %}<img class="post" src="{{ url_for('static', filename='uploads/' + msg.image) }}" />{% endif %}
+ </div></h5>"
+		{% endfor %}	
+</div>
+<br><br>
+<input type="text" size="36"id="myMessage">
+<button id="sendbutton">Send</button>
+<form id="attachment" action="{{ url_for('upload_file') }}" method="post" enctype=multipart/form-data>
+	<p><input id="filepath" type=file name=file>
+         <input type=submit value=Attach>
+</form>
+<h6><div class="r"><div>Attachment:</div><div id="attach" style="color: rgb(255, 102, 0)">No Image</div></div></h6>
+</div>
+</div>
+{% endblock %}

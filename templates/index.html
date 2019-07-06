@@ -1,0 +1,55 @@
+{% extends "layout.html" %}
+
+
+{% block title %}>Chat Room{% endblock %}
+
+{% block body %}
+<script>
+        $(document).ready(function() {
+        $("#create").on('click', function() {
+                const request = new XMLHttpRequest();
+                request.open('POST','/create_channel');
+                request.onload=()=>	{
+                const data=JSON.parse(request.responseText);
+                if(data.success){
+                $("#channellist").append('<li><a href="url_for(.channels,channel='+data.ch+'" method=post>'+data.ch+'</a></li>');
+                alert("You have created the new channel !");
+                location.reload();//reload the page to appply jinja2 template :"url for"
+                    }
+                    else {alert("Already exists");}
+                }
+              const data=new FormData();
+                data.append('new_channel',$('#channelname').val());
+          request.send(data);
+              
+            });
+        });
+    </script>
+<div class="row">
+        <div class="left">
+            <h4>
+            <br>
+            Create a New Channel:
+            <hr>
+            <input type="text" id="channelname">
+            <button id="create">Create</button>
+            <br>	<br>
+            <hr>
+          Join Channels:
+          <hr>
+          <ul id=channellist>
+            {% for ch in clist %}
+          <li><a href="{{ url_for('.channels',channel=ch) }}" method="post">{{ ch }}</a></li>
+            {% endfor %}
+          </ul>
+       </h4> 
+        </div>
+
+        <div class="half">
+                <img class="myimg" src="{{ url_for('static', filename = 'img/teamwork-concept.jpg') }}">
+              </div> 
+
+    
+</div>
+
+{% endblock %}
